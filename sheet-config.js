@@ -2,7 +2,7 @@
  * Struttura della scheda.
  * - ABILITIES: le 6 caratteristiche con le loro abilità (skills).
  *   armorPenalty: true mostra l'icona "penalità per armatura".
- * - DEFAULT_SHEET: valori iniziali (Roland), usati solo se non c'è nulla di salvato.
+ * - DEFAULT_SHEET: valori iniziali di una scheda nuova (vuota), usati solo se non c'è nulla di salvato.
  *
  * Chiavi salvate (piatte):
  *   nome, pb, ca, armatura, pf_max, pf
@@ -57,12 +57,5 @@ window.ABILITIES = [
 ];
 
 window.DEFAULT_SHEET = {
-  nome: "Roland",
-  pb: 2,
-  score_for: 15, score_des: 15, score_cos: 12, score_int: 12, score_sag: 10, score_car: 15,
-  save_for: true, save_cos: true,
-  prof_atletica: true, prof_percepire: true, prof_sopravvivenza: true, prof_intimidire: true,
-  ca: 17, armatura: "Cotta di Maglia",
-  pf_max: 11, pf: 11,
-  passive_percepire: 10, passive_indagare: 11,
+  pb: 2, // bonus competenza di livello 1
 };
