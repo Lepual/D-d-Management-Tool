@@ -562,3 +562,39 @@ button.stat-val:hover { color: var(--accent-2); border-color: var(--accent-2); }
 .token.down .token-face { position: relative; }
 .round { white-space: nowrap; }
 .panel-head { flex-wrap: wrap; }
+
+/* =========================================================
+ * Schermata DM unica: elenco | mappa | dadi
+ * ========================================================= */
+body[data-mode="dm"] .layout { grid-template-columns: minmax(0, 1fr) 300px; }
+.dm-panel { overflow: hidden; }
+.dm-body {
+  flex: 1; min-height: 0; display: grid; gap: 14px;
+  grid-template-columns: 360px minmax(0, 1fr);
+}
+.dm-body > .dm-view { overflow: auto; min-height: 0; padding-right: 2px; }
+#dm-view-map { overflow: hidden; }
+.dm-col-title { margin: 0 0 8px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent-2); }
+
+/* elenco compatto nella colonna stretta */
+.dm-body .combatant {
+  grid-template-columns: 14px 44px minmax(0, 1fr) 54px 84px 22px; gap: 6px 8px; padding: 6px 8px;
+}
+.dm-body .c-img { width: 44px; height: 44px; }
+.dm-body .c-hp { grid-column: 2 / -1; grid-row: 2; }
+.dm-body .c-remove { grid-row: 1; grid-column: -2; }
+.dm-body .c-stat input { width: 44px; }
+.dm-body .dm-add-form { grid-template-columns: 1fr 1fr; }
+.dm-body .dm-toolbar .btn { font-size: 0.75rem; }
+
+/* dadi più compatti accanto alla mappa */
+body[data-mode="dm"] .dice-grid { gap: 6px; }
+body[data-mode="dm"] .die-label { font-size: 0.9rem; }
+body[data-mode="dm"] .result-total { font-size: 2.4rem; }
+
+@media (max-width: 1150px) {
+  body[data-mode="dm"] .layout { grid-template-columns: 1fr; height: auto; }
+  .dm-panel { overflow: visible; }
+  .dm-body { grid-template-columns: 1fr; }
+  #dm-view-map { min-height: 70vh; }
+}

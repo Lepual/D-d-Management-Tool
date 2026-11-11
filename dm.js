@@ -7,6 +7,7 @@ function setMode(mode) {
   $$(".mode-tab").forEach((t) => t.classList.toggle("active", t.dataset.mode === mode));
   $$("[data-mode-panel]").forEach((p) => (p.hidden = p.dataset.modePanel !== mode));
   store.set("dnd.mode", mode);
+  document.body.dataset.mode = mode;
 }
 $$(".mode-tab").forEach((t) => t.addEventListener("click", () => setMode(t.dataset.mode)));
 setMode(store.get("dnd.mode", "player"));
@@ -295,13 +296,6 @@ $("#dm-clear-all").addEventListener("click", () => {
 /* =========================================================
  * Viste del pannello DM: Combattimento / Mappa
  * ========================================================= */
-function setDMView(view) {
-  $$(".vtab").forEach((t) => t.classList.toggle("active", t.dataset.view === view));
-  $$(".dm-view").forEach((v) => (v.hidden = v.id !== `dm-view-${view}`));
-  store.set("dnd.dmView", view);
-  if (view === "map") renderMap();
-}
-$$(".vtab").forEach((t) => t.addEventListener("click", () => setDMView(t.dataset.view)));
 
 /* =========================================================
  * Mappa: griglia, pedine, disegni, sfondo
@@ -377,7 +371,6 @@ function strokeSVG(s, i) {
 
 function renderMap() {
   const m = ensureMap();
-  if ($("#dm-view-map").hidden) return; // niente da disegnare se la vista non è aperta
   const board = $("#map-board");
   board.style.width = `${m.cols * m.cell}px`;
   board.style.height = `${m.rows * m.cell}px`;
@@ -582,14 +575,13 @@ $("#dm-import").addEventListener("change", async (e) => {
     data.mapBg ? await bgDB.save(data.mapBg) : await bgDB.remove();
   } catch {}
   update();
-  setDMView("tracker");
   setSavedInfo("#dm-saved-info", `Caricata da “${file.name}”`);
 });
 
 /* ---- Avvio ---- */
 ensureMap();
 renderTracker();
-setDMView(store.get("dnd.dmView", "tracker"));
+renderMap();
 bgDB
   .load()
   .then((url) => url && showMapBg(url))

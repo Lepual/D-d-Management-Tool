@@ -22,10 +22,7 @@
     <!-- ============ SINISTRA (DM): COMBATTIMENTO ============ -->
     <section class="panel dm-panel" data-mode-panel="dm" hidden>
       <div class="panel-head">
-        <div class="tabs" role="tablist">
-          <button class="vtab active" data-view="tracker" role="tab">Combattimento</button>
-          <button class="vtab" data-view="map" role="tab">Mappa</button>
-        </div>
+        <h2>Dungeon Master</h2>
         <div class="turn-ctrl">
           <span class="round" id="dm-round">Round 1</span>
           <button class="btn ghost small" id="dm-prev" title="Turno precedente">◀</button>
@@ -41,8 +38,10 @@
         <span class="muted small" id="dm-saved-info"></span>
       </div>
 
+      <div class="dm-body">
       <div class="dm-view" id="dm-view-tracker">
-      <details class="dm-add" id="dm-add-box" open>
+      <h3 class="dm-col-title">Combattimento</h3>
+      <details class="dm-add" id="dm-add-box">
         <summary>➕ Aggiungi partecipante</summary>
         <form id="dm-add" class="dm-add-form" autocomplete="off">
           <label>Tipo
@@ -78,7 +77,8 @@
       <p class="muted small dm-note">Ordine per iniziativa (dal più alto). Clic sull'immagine per cambiarla. Per mettere qualcuno sulla mappa aggiungilo prima qui.</p>
       </div>
 
-      <div class="dm-view" id="dm-view-map" hidden>
+      <div class="dm-view" id="dm-view-map">
+        <h3 class="dm-col-title">Mappa</h3>
         <div class="map-toolbar">
           <div class="seg" id="map-tool">
             <button type="button" data-tool="move" class="active" title="Trascina le pedine">✋ Muovi</button>
@@ -107,6 +107,7 @@
           </div>
         </div>
         <p class="muted small dm-note">Clic su un nome qui sopra per mettere o togliere la pedina. Trascina per spostarla, doppio clic per toglierla dalla mappa. Il bordo dorato indica di chi è il turno.</p>
+      </div>
       </div>
     </section>
 
