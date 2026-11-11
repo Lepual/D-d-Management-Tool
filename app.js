@@ -72,7 +72,7 @@ function showPdf(file) {
     frame.removeAttribute("src");
     $("#pdf-empty").hidden = false;
     $("#pdf-name").textContent = "Nessun PDF caricato";
-    $("#pdf-open").hidden = $("#pdf-remove").hidden = true;
+    $("#pdf-open").hidden = $("#pdf-remove").hidden = $("#pdf-fill").hidden = true;
     return;
   }
   pdfUrl = URL.createObjectURL(file);
@@ -80,10 +80,10 @@ function showPdf(file) {
   frame.hidden = false;
   $("#pdf-empty").hidden = true;
   $("#pdf-name").textContent = file.name || "scheda.pdf";
-  $("#pdf-open").hidden = $("#pdf-remove").hidden = false;
+  $("#pdf-open").hidden = $("#pdf-remove").hidden = $("#pdf-fill").hidden = false;
 }
 
-async function setPdf(file) {
+async function setPdf(file, { readFields = false } = {}) {
   if (!file || file.type !== "application/pdf") {
     alert("Seleziona un file PDF.");
     return;
@@ -94,10 +94,41 @@ async function setPdf(file) {
   } catch (e) {
     console.warn("Impossibile salvare il PDF in locale", e);
   }
+  if (readFields) fillFromPdf(file, { silentIfNone: true });
+}
+
+// Compila i campi della scheda leggendo il PDF compilabile (vedi pdf-import.js)
+async function fillFromPdf(file, { silentIfNone = false } = {}) {
+  const btn = $("#pdf-fill");
+  btn.disabled = true;
+  btn.textContent = "⏳ Lettura…";
+  try {
+    const result = await readSheetFromPdf(file);
+    if (!result) {
+      if (!silentIfNone)
+        alert("Questo PDF non ha campi compilabili compatibili con la scheda: compila i campi a mano nella tab Campi.");
+      return;
+    }
+    const ok = confirm(
+      `Ho letto questi dati dal PDF:\n\n${result.summary}\n\nVuoi usarli per compilare la scheda? I campi attuali verranno sostituiti.`
+    );
+    if (!ok) return;
+    sheet = { ...sheet, ...result.values };
+    store.set(SHEET_KEY, sheet);
+    renderSheet();
+    $('.tab[data-tab="fields"]').click();
+    setSavedInfo("#sheet-saved-info", "Campi compilati dal PDF");
+  } catch (e) {
+    console.warn(e);
+    if (!silentIfNone) alert(`Non sono riuscito a leggere il PDF. ${e.message || ""}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "⇩ Compila campi dal PDF";
+  }
 }
 
 $("#pdf-input").addEventListener("change", (e) => {
-  setPdf(e.target.files[0]);
+  setPdf(e.target.files[0], { readFields: true });
   e.target.value = "";
 });
 $("#pdf-open").addEventListener("click", () => pdfUrl && window.open(pdfUrl, "_blank"));
@@ -121,7 +152,11 @@ const drop = $("#pdf-drop");
     drop.classList.remove("drag");
   })
 );
-drop.addEventListener("drop", (e) => setPdf(e.dataTransfer.files[0]));
+drop.addEventListener("drop", (e) => setPdf(e.dataTransfer.files[0], { readFields: true }));
+$("#pdf-fill").addEventListener("click", async () => {
+  const file = await pdfDB.load().catch(() => null);
+  if (file) fillFromPdf(file);
+});
 
 pdfDB
   .load()
