@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tavolo D&amp;D</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>⚔️ Tavolo D&amp;D</h1>
+    <nav class="mode-tabs" role="tablist">
+      <button class="mode-tab active" data-mode="player" role="tab">🧝 Giocatore</button>
+      <button class="mode-tab" data-mode="dm" role="tab">🐉 Dungeon Master</button>
+    </nav>
+    <span class="hint">Tutto resta salvato in locale nel tuo browser</span>
+  </header>
+
+  <main class="layout">
+    <!-- ============ SINISTRA (DM): COMBATTIMENTO ============ -->
+    <section class="panel dm-panel" data-mode-panel="dm" hidden>
+      <div class="panel-head">
+        <div class="tabs" role="tablist">
+          <button class="vtab active" data-view="tracker" role="tab">Combattimento</button>
+          <button class="vtab" data-view="map" role="tab">Mappa</button>
+        </div>
+        <div class="turn-ctrl">
+          <span class="round" id="dm-round">Round 1</span>
+          <button class="btn ghost small" id="dm-prev" title="Turno precedente">◀</button>
+          <button class="btn small" id="dm-next">Turno successivo ▶</button>
+        </div>
+      </div>
+      <div class="save-bar">
+        <button class="btn ghost small" id="dm-export" title="Scarica un file con tutto lo stato del combattimento">💾 Salva partita</button>
+        <label class="btn ghost small" title="Riprendi una partita salvata in precedenza">
+          📂 Carica partita
+          <input type="file" id="dm-import" accept=".json,application/json" hidden />
+        </label>
+        <span class="muted small" id="dm-saved-info"></span>
+      </div>
+
+      <div class="dm-view" id="dm-view-tracker">
+      <details class="dm-add" id="dm-add-box" open>
+        <summary>➕ Aggiungi partecipante</summary>
+        <form id="dm-add" class="dm-add-form" autocomplete="off">
+          <label>Tipo
+            <select name="type">
+              <option value="enemy">Nemico</option>
+              <option value="pc">Giocatore</option>
+              <option value="ally">Alleato / PNG</option>
+            </select>
+          </label>
+          <label class="wide">Nome <input name="name" required placeholder="es. Goblin" /></label>
+          <label>CA <input name="ca" type="number" placeholder="12" /></label>
+          <label>PF max <input name="hp" type="number" placeholder="7" /></label>
+          <label>Bonus iniz. <input name="initBonus" type="number" placeholder="+2" /></label>
+          <label>Iniziativa <input name="init" type="number" placeholder="tira" title="Vuoto = tira d20 + bonus" /></label>
+          <label>Quantità <input name="qty" type="number" min="1" value="1" /></label>
+          <label class="wide">Immagine <input name="img" type="file" accept="image/*" /></label>
+          <div class="dm-add-actions">
+            <button class="btn" type="submit">Aggiungi</button>
+            <button class="btn ghost" type="button" id="dm-add-me">Aggiungi il mio personaggio</button>
+          </div>
+        </form>
+      </details>
+
+      <div class="dm-toolbar">
+        <button class="btn ghost small" id="dm-roll-enemies">🎲 Tira iniziativa nemici</button>
+        <button class="btn ghost small" id="dm-new-fight">Nuovo round 1</button>
+        <button class="btn ghost small danger" id="dm-clear-enemies">Rimuovi nemici</button>
+        <button class="btn ghost small danger" id="dm-clear-all">Svuota tutto</button>
+      </div>
+
+      <ol class="tracker" id="tracker"></ol>
+      <input type="file" id="dm-img-input" accept="image/*" hidden />
+      <p class="muted small dm-note">Ordine per iniziativa (dal più alto). Clic sull'immagine per cambiarla. Per mettere qualcuno sulla mappa aggiungilo prima qui.</p>
+      </div>
+
+      <div class="dm-view" id="dm-view-map" hidden>
+        <div class="map-toolbar">
+          <div class="seg" id="map-tool">
+            <button type="button" data-tool="move" class="active" title="Trascina le pedine">✋ Muovi</button>
+            <button type="button" data-tool="draw" title="Disegna muri, fiumi, ostacoli">✏️ Disegna</button>
+            <button type="button" data-tool="erase" title="Clic su un tratto per cancellarlo">🧽 Gomma</button>
+          </div>
+          <input type="color" id="map-color" value="#3b2fd6" title="Colore del tratto" />
+          <button class="btn ghost small" id="map-undo" title="Annulla l'ultimo tratto">↶ Annulla</button>
+          <button class="btn ghost small danger" id="map-clear-draw">Cancella disegni</button>
+          <span class="map-sep"></span>
+          <label class="map-num">Colonne <input type="number" id="map-cols" min="2" max="60" /></label>
+          <label class="map-num">Righe <input type="number" id="map-rows" min="2" max="60" /></label>
+          <label class="map-num">Zoom <input type="range" id="map-zoom" min="28" max="120" step="4" /></label>
+          <label class="map-check"><input type="checkbox" id="map-grid-toggle" checked /> Griglia</label>
+          <span class="map-sep"></span>
+          <label class="btn ghost small">🖼 Sfondo<input type="file" id="map-bg-input" accept="image/*" hidden /></label>
+          <button class="btn ghost small" id="map-bg-remove" hidden>✕ Sfondo</button>
+        </div>
+        <div class="map-tokens-bar" id="map-roster"></div>
+        <div class="map-viewport" id="map-viewport">
+          <div class="map-board" id="map-board">
+            <div class="map-bg" id="map-bg"></div>
+            <div class="map-grid" id="map-grid"></div>
+            <svg class="map-draw" id="map-draw" preserveAspectRatio="none"></svg>
+            <div class="map-tokens" id="map-tokens"></div>
+          </div>
+        </div>
+        <p class="muted small dm-note">Clic su un nome qui sopra per mettere o togliere la pedina. Trascina per spostarla, doppio clic per toglierla dalla mappa. Il bordo dorato indica di chi è il turno.</p>
+      </div>
+    </section>
+
+    <!-- ============ SINISTRA (GIOCATORE): SCHEDA ============ -->
+    <section class="panel sheet-panel" data-mode-panel="player">
+      <div class="panel-head">
+        <h2>Scheda</h2>
+        <div class="tabs" role="tablist">
+          <button class="tab active" data-tab="pdf" role="tab">PDF</button>
+          <button class="tab" data-tab="fields" role="tab">Campi</button>
+        </div>
+      </div>
+      <div class="save-bar">
+        <button class="btn ghost small" id="sheet-export" title="Scarica un file con campi, PDF e cronologia dadi">💾 Salva scheda</button>
+        <label class="btn ghost small" title="Apri un file di scheda salvato in precedenza">
+          📂 Carica scheda
+          <input type="file" id="sheet-import" accept=".json,application/json" hidden />
+        </label>
+        <span class="muted small" id="sheet-saved-info"></span>
+      </div>
+
+      <!-- Tab PDF -->
+      <div class="tab-body active" id="tab-pdf">
+        <div class="pdf-toolbar">
+          <label class="btn">
+            📄 Carica PDF
+            <input type="file" id="pdf-input" accept="application/pdf" hidden />
+          </label>
+          <span id="pdf-name" class="muted">Nessun PDF caricato</span>
+          <button class="btn ghost" id="pdf-open" hidden>↗ Apri in nuova scheda</button>
+          <button class="btn ghost danger" id="pdf-remove" hidden>✕ Rimuovi</button>
+        </div>
+        <div class="pdf-view" id="pdf-drop">
+          <iframe id="pdf-frame" title="Scheda PDF" hidden></iframe>
+          <div class="pdf-empty" id="pdf-empty">
+            <p>Trascina qui il PDF della tua scheda<br />oppure usa “Carica PDF”.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Campi -->
+      <div class="tab-body" id="tab-fields">
+        <div class="fields-toolbar">
+          <button class="btn ghost danger" id="sheet-reset">Svuota campi</button>
+        </div>
+        <form id="sheet-form" class="sheet-form" autocomplete="off"></form>
+      </div>
+    </section>
+
+    <!-- ============ DESTRA: DADI ============ -->
+    <section class="panel dice-panel">
+      <div class="panel-head">
+        <h2>Dadi</h2>
+        <span class="muted small">Tocca un dado una o più volte, poi TIRA</span>
+      </div>
+
+      <div class="dice-grid" id="dice-grid"></div>
+
+      <div class="dice-options">
+        <label class="opt">
+          Modificatore
+          <div class="stepper">
+            <button type="button" data-mod="-1">−</button>
+            <input type="number" id="modifier" value="0" />
+            <button type="button" data-mod="1">+</button>
+          </div>
+        </label>
+        <div class="opt">
+          d20
+          <div class="seg" id="adv-mode">
+            <button type="button" data-adv="normal" class="active">Normale</button>
+            <button type="button" data-adv="adv">Vantaggio</button>
+            <button type="button" data-adv="dis">Svantaggio</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pool" id="pool"><span class="muted">Nessun dado selezionato</span></div>
+
+      <div class="roll-actions">
+        <button class="btn ghost" id="reset-pool">RESET</button>
+        <button class="btn roll" id="roll">TIRA</button>
+      </div>
+
+      <div class="result" id="result" aria-live="polite">
+        <div class="result-total" id="result-total">–</div>
+        <div class="result-detail" id="result-detail"></div>
+      </div>
+
+      <div class="history-head">
+        <h3>Cronologia</h3>
+        <button class="btn ghost small" id="clear-history">Pulisci</button>
+      </div>
+      <ol class="history" id="history"></ol>
+    </section>
+  </main>
+
+  <script src="sheet-config.js"></script>
+  <script src="app.js"></script>
+  <script src="dm.js"></script>
+</body>
+</html>
