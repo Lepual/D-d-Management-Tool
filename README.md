@@ -3,7 +3,7 @@
 Strumento locale per giocare a Dungeons & Dragons.
 
 - **Sinistra – Scheda**: carica il PDF della scheda (anteprima rapida, salvato nel browser). Se è il PDF compilabile della scheda italiana, i campi (nome, caratteristiche, competenze, CA, PF) vengono letti e compilati in automatico.
-- **Dungeon Master**: tracker di combattimento (immagine, nome, CA, iniziativa in ordine, PF, turni e round) e mappa a griglia con pedine trascinabili, disegni e sfondo.
+- **Dungeon Master**: tracker di combattimento (immagine, nome, CA, iniziativa in ordine, PF, turni e round) e mappa a griglia con pedine trascinabili, disegni e sfondo. Con **📚 Carica schede giocatori** il DM carica tutti i PDF (o i file salvati) e apre la scheda di ciascuno cliccando sul giocatore nell'elenco o sulla sua pedina.
 - **Destra – Dadi**: d4, d6, d8, d10, d12, d20, d100. Tocca un dado più volte per aggiungerlo, clic destro per toglierlo, modificatore, vantaggio/svantaggio sul d20, cronologia.
 
 ## Avvio

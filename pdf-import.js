@@ -98,6 +98,10 @@ async function readSheetFromPdf(file) {
   };
 
   setText("nome", "Nome");
+  setText("classe", "Classe e livello");
+  setText("razza", "Razza");
+  setText("background", "Background");
+  setText("giocatore", "Nome Giocatore");
   setNum("pb", "Bonus competenza");
   setNum("ca", "Classe armatura");
   setText("armatura", "CA1.0");

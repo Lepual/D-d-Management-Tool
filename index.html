@@ -41,6 +41,13 @@
       <div class="dm-body">
       <div class="dm-view" id="dm-view-tracker">
       <h3 class="dm-col-title">Combattimento</h3>
+      <div class="dm-sheets-bar">
+        <label class="btn small" title="Seleziona uno o più PDF delle schede (o file salvati con 💾 Salva scheda)">
+          📚 Carica schede giocatori
+          <input type="file" id="dm-sheets-input" accept=".pdf,.json,application/pdf,application/json" multiple hidden />
+        </label>
+        <span class="muted small" id="dm-sheets-info"></span>
+      </div>
       <details class="dm-add" id="dm-add-box">
         <summary>➕ Aggiungi partecipante</summary>
         <form id="dm-add" class="dm-add-form" autocomplete="off">
@@ -205,6 +212,26 @@
       <ol class="history" id="history"></ol>
     </section>
   </main>
+
+  <dialog id="pc-dialog" class="pc-dialog">
+    <div class="pc-head">
+      <div class="pc-avatar" id="pc-avatar"></div>
+      <div class="pc-title">
+        <h2 id="pc-name"></h2>
+        <span class="muted small" id="pc-sub"></span>
+      </div>
+      <div class="tabs pc-tabs">
+        <button type="button" class="ptab active" data-ptab="stats">Scheda</button>
+        <button type="button" class="ptab" data-ptab="pdf">PDF</button>
+      </div>
+      <button type="button" class="btn ghost small" id="pc-close" title="Chiudi">✕</button>
+    </div>
+    <div class="pc-body" id="pc-stats"></div>
+    <div class="pc-body pc-pdf" id="pc-pdf" hidden>
+      <iframe id="pc-pdf-frame" title="PDF della scheda"></iframe>
+      <p class="muted pc-nopdf" id="pc-nopdf" hidden>Per questo giocatore non è stato caricato il PDF.</p>
+    </div>
+  </dialog>
 
   <script src="sheet-config.js"></script>
   <script src="pdf-import.js"></script>

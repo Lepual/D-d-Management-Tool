@@ -598,3 +598,70 @@ body[data-mode="dm"] .result-total { font-size: 2.4rem; }
   .dm-body { grid-template-columns: 1fr; }
   #dm-view-map { min-height: 70vh; }
 }
+
+/* =========================================================
+ * DM: schede dei giocatori
+ * ========================================================= */
+.dm-sheets-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.c-sheet {
+  border: 1px solid var(--line); background: var(--panel); color: var(--accent-2); border-radius: 5px;
+  font: inherit; font-size: 0.68rem; padding: 1px 6px; cursor: pointer; text-transform: none; letter-spacing: 0;
+}
+.c-sheet:hover { border-color: var(--accent-2); }
+
+.pc-dialog {
+  position: fixed; inset: 70px 332px 16px auto; margin: 0; width: min(620px, calc(100vw - 360px));
+  max-height: none; height: auto; padding: 0; z-index: 50; display: none; flex-direction: column;
+  background: var(--panel); color: var(--text); border: 1px solid var(--accent-2); border-radius: var(--radius);
+  box-shadow: 0 20px 50px #000a;
+}
+.pc-dialog[open] { display: flex; }
+.pc-head { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.pc-avatar {
+  width: 52px; height: 52px; border-radius: 50%; overflow: hidden; flex: none; border: 3px solid var(--tc, var(--line));
+  display: grid; place-items: center; background: var(--panel-2); font-family: "Cinzel", Georgia, serif; font-size: 1.4rem;
+}
+.pc-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.pc-title { flex: 1; min-width: 140px; }
+.pc-title h2 { margin: 0; font-family: "Cinzel", Georgia, serif; font-size: 1.3rem; }
+.ptab { border: 0; background: transparent; color: var(--muted); padding: 6px 14px; border-radius: 6px; cursor: pointer; font: inherit; font-weight: 600; }
+.ptab.active { background: var(--accent); color: #fff; }
+.pc-body { flex: 1; min-height: 0; overflow: auto; padding: 12px 14px; }
+.pc-pdf { padding: 0; display: flex; }
+.pc-pdf[hidden] { display: none; }
+.pc-pdf iframe { flex: 1; border: 0; background: #fff; border-radius: 0 0 var(--radius) var(--radius); }
+.pc-nopdf { padding: 20px; }
+
+.pc-stats-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 6px; }
+.pc-stat {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; border-radius: 8px;
+  background: var(--panel-2); border: 1px solid var(--line); color: var(--text); font: inherit;
+}
+button.pc-stat { cursor: pointer; }
+button.pc-stat:hover { border-color: var(--accent-2); }
+.pc-stat b { font-size: 1.15rem; }
+.pc-stat span { font-size: 0.62rem; text-transform: uppercase; color: var(--muted); text-align: center; }
+.pc-armor { margin: 0 0 8px; }
+.pc-abilities { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 8px; margin-bottom: 8px; }
+.pc-ab { border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; background: color-mix(in srgb, var(--panel-2) 60%, transparent); }
+.pc-ab-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.pc-ab-head div { display: flex; flex-direction: column; line-height: 1.1; }
+.pc-ab-mod {
+  width: 42px; height: 42px; border-radius: 10px 10px 18px 18px; border: 1px solid var(--line); background: var(--panel);
+  color: var(--text); font: inherit; font-size: 1.1rem; font-weight: 700; cursor: pointer;
+}
+.pc-ab-mod:hover { color: var(--accent-2); border-color: var(--accent-2); }
+.pc-line {
+  display: flex; align-items: center; gap: 6px; width: 100%; border: 0; background: transparent; color: var(--text);
+  font: inherit; font-size: 0.85rem; padding: 2px 4px; border-radius: 4px; cursor: pointer; text-align: left;
+}
+.pc-line:hover { background: var(--panel-2); color: var(--accent-2); }
+.pc-mark { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--muted); flex: none; }
+.pc-mark.prof { background: var(--text); border-color: var(--text); }
+.pc-mark.exp { background: var(--accent-2); border-color: var(--accent-2); border-radius: 1px; transform: rotate(45deg); }
+.pc-bonus { width: 28px; color: var(--accent-2); font-weight: 700; font-size: 0.8rem; }
+
+@media (max-width: 1150px) {
+  .pc-dialog { inset: 60px 12px 12px 12px; width: auto; }
+  .pc-stats-row { grid-template-columns: repeat(3, 1fr); }
+}

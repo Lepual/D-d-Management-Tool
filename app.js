@@ -176,22 +176,33 @@ const num = (v, d = 0) => {
 const fmtBonus = (n) => (n >= 0 ? `+${n}` : `${n}`);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-const calc = {
-  pb: () => num(sheet.pb, 2),
-  mod: (ab) => Math.floor((num(sheet[`score_${ab}`], 10) - 10) / 2),
-  save: (ab) => calc.mod(ab) + (sheet[`save_${ab}`] ? calc.pb() : 0),
-  skill(id) {
-    const ab = window.ABILITIES.find((a) => a.skills.some((s) => s.id === id)).id;
-    const mult = sheet[`exp_${id}`] ? 2 : sheet[`prof_${id}`] ? 1 : 0;
-    return calc.mod(ab) + mult * calc.pb();
-  },
-  init: () => calc.mod("des"),
-  passive: (id) => 10 + calc.skill(id),
-};
+// Calcoli di una scheda qualsiasi (getSheet restituisce l'oggetto scheda).
+// Usato per la scheda del giocatore e, nel DM, per le schede di tutti i giocatori.
+function calcFor(getSheet) {
+  const S = () => getSheet() || {};
+  const c = {
+    pb: () => num(S().pb, 2),
+    mod: (ab) => Math.floor((num(S()[`score_${ab}`], 10) - 10) / 2),
+    save: (ab) => c.mod(ab) + (S()[`save_${ab}`] ? c.pb() : 0),
+    skill(id) {
+      const ab = window.ABILITIES.find((a) => a.skills.some((s) => s.id === id)).id;
+      const mult = S()[`exp_${id}`] ? 2 : S()[`prof_${id}`] ? 1 : 0;
+      return c.mod(ab) + mult * c.pb();
+    },
+    init: () => c.mod("des"),
+    passive: (id) => 10 + c.skill(id),
+  };
+  return c;
+}
+const calc = calcFor(() => sheet);
 
-// "ability:for" | "save:for" | "skill:atletica" | "init" -> { label, bonus }
-// Restituisce { label, parts }: ogni parte è un addendo con nome (es. FOR +2, Competenza +2)
+// "ability:for" | "save:for" | "skill:atletica" | "init" -> { label, parts }
+// ogni parte è un addendo con nome (es. FOR +2, Competenza +2)
 function resolveRoll(key) {
+  return resolveRollFor(sheet, calc, key);
+}
+
+function resolveRollFor(sheet, calc, key) {
   const [kind, id] = key.split(":");
   const abShort = (abId) => abId.toUpperCase();
   const pb = calc.pb();

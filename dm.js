@@ -90,7 +90,9 @@ function renderTracker() {
         </button>
         <div class="c-name">
           <input data-field="name" value="${esc(c.name)}" />
-          <span class="c-type">${TYPE_LABEL[c.type] || ""}</span>
+          <span class="c-type">${TYPE_LABEL[c.type] || ""}${
+            hasSheet(c) ? ` · <button type="button" class="c-sheet" data-act="sheet" title="Apri la scheda di ${esc(c.name)}">📜 Scheda</button>` : ""
+          }</span>
         </div>
         <label class="c-stat c-ca" title="Classe Armatura">
           <span>CA</span><input type="number" data-field="ca" value="${c.ca ?? ""}" />
@@ -126,6 +128,7 @@ function update() {
   saveDM();
   renderTracker();
   renderMap();
+  if (pcOpenId) renderPcSheet();
 }
 
 /* ---- Aggiunta ---- */
@@ -200,9 +203,14 @@ $("#tracker").addEventListener("click", (e) => {
   const c = dm.combatants.find((x) => x.id === row.dataset.id);
   const act = btn.dataset.act;
 
+  if (act === "sheet") {
+    openPcSheet(c.id);
+    return;
+  }
   if (act === "remove") {
     if (!confirm(`Rimuovere ${c.name}?`)) return;
     if (dm.turnId === c.id) advanceTurn(1);
+    if (c.hasPdf) pcPdfDB.remove(c.id).catch(() => {});
     dm.combatants = dm.combatants.filter((x) => x !== c);
     if (!dm.combatants.length) dm.turnId = null;
   } else if (act === "roll-init") {
@@ -290,6 +298,7 @@ $("#dm-clear-enemies").addEventListener("click", () => {
 $("#dm-clear-all").addEventListener("click", () => {
   if (!confirm("Svuotare tutto il combattimento?")) return;
   dm = { combatants: [], round: 1, turnId: null };
+  pcPdfDB.clear().catch(() => {});
   update();
 });
 
@@ -483,7 +492,7 @@ board.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     const c = dm.combatants.find((x) => x.id === el.dataset.id);
     const p = boardPoint(e);
-    drag = { el, c, dx: p.x - (c.pos.x + 0.5), dy: p.y - (c.pos.y + 0.5) };
+    drag = { el, c, dx: p.x - (c.pos.x + 0.5), dy: p.y - (c.pos.y + 0.5), sx: p.x, sy: p.y };
     el.classList.add("dragging");
     board.setPointerCapture(e.pointerId);
   } else if (mapTool === "draw") {
@@ -521,6 +530,14 @@ function endPointer(e) {
   const m = ensureMap();
   if (drag) {
     const p = boardPoint(e);
+    // semplice clic senza spostamento: apre la scheda (se c'è)
+    if (Math.hypot(p.x - drag.sx, p.y - drag.sy) < 0.15) {
+      const c = drag.c;
+      drag.el.classList.remove("dragging");
+      drag = null;
+      if (hasSheet(c) && e.type === "pointerup") openPcSheet(c.id);
+      return;
+    }
     // aggancio alla casella più vicina, sempre dentro la griglia
     drag.c.pos = {
       x: Math.max(0, Math.min(m.cols - 1, Math.floor(p.x - drag.dx))),
@@ -551,7 +568,14 @@ $("#dm-export").addEventListener("click", async () => {
   try {
     mapBg = (await bgDB.load()) || null;
   } catch {}
-  downloadJSON({ kind: "dnd-partita", version: 2, savedAt: now.toISOString(), dm, mapBg }, `Partita ${stamp(now)}.json`);
+  const pdfs = {};
+  for (const c of dm.combatants.filter((x) => x.hasPdf)) {
+    try {
+      const f = await pcPdfDB.load(c.id);
+      if (f) pdfs[c.id] = { name: f.name || `${c.name}.pdf`, data: await blobToDataURL(f) };
+    } catch {}
+  }
+  downloadJSON({ kind: "dnd-partita", version: 3, savedAt: now.toISOString(), dm, mapBg, pdfs }, `Partita ${stamp(now)}.json`);
   setSavedInfo("#dm-saved-info", `Salvata alle ${now.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`);
 });
 
@@ -573,9 +597,211 @@ $("#dm-import").addEventListener("change", async (e) => {
   showMapBg(data.mapBg || null);
   try {
     data.mapBg ? await bgDB.save(data.mapBg) : await bgDB.remove();
-  } catch {}
+    await pcPdfDB.clear();
+    for (const [id, p] of Object.entries(data.pdfs || {})) {
+      const blob = await (await fetch(p.data)).blob();
+      await pcPdfDB.save(id, new File([blob], p.name || "scheda.pdf", { type: "application/pdf" }));
+    }
+  } catch (err) {
+    console.warn("PDF della partita non ripristinati del tutto", err);
+  }
   update();
   setSavedInfo("#dm-saved-info", `Caricata da “${file.name}”`);
+});
+
+/* =========================================================
+ * Schede dei giocatori (DM)
+ * combatant.sheet = valori della scheda (stesso formato della tab Giocatore)
+ * combatant.hasPdf = true se il PDF è salvato in IndexedDB con chiave "pcpdf:<id>"
+ * ========================================================= */
+const pcPdfDB = {
+  save: (id, file) => pdfDB.run("readwrite", (s) => s.put(file, `pcpdf:${id}`)),
+  load: (id) => pdfDB.run("readonly", (s) => s.get(`pcpdf:${id}`)),
+  remove: (id) => pdfDB.run("readwrite", (s) => s.delete(`pcpdf:${id}`)),
+  async clear() {
+    const keys = (await pdfDB.run("readonly", (s) => s.getAllKeys())) || [];
+    for (const k of keys) if (String(k).startsWith("pcpdf:")) await pdfDB.run("readwrite", (s) => s.delete(k));
+  },
+};
+const hasSheet = (c) => !!(c && (c.sheet || c.hasPdf));
+
+// crea o aggiorna il giocatore con lo stesso nome
+function upsertPc(values, fallbackName) {
+  const name = (values.nome || fallbackName || "Giocatore").trim();
+  let c = dm.combatants.find((x) => x.type === "pc" && x.name.trim().toLowerCase() === name.toLowerCase());
+  const isNew = !c;
+  if (isNew) {
+    c = { id: uid(), type: "pc", name, init: null, img: null, pos: null };
+    dm.combatants.push(c);
+  }
+  c.sheet = values;
+  const k = calcFor(() => values);
+  if (values.ca != null) c.ca = intOr(values.ca);
+  if (values.pf_max != null) c.hpMax = intOr(values.pf_max);
+  // i PF attuali del combattimento non vengono toccati se il giocatore c'era già
+  if (isNew || c.hp == null) c.hp = intOr(values.pf, c.hpMax);
+  c.initBonus = k.init();
+  return c;
+}
+
+$("#dm-sheets-input").addEventListener("change", async (e) => {
+  const files = [...e.target.files];
+  e.target.value = "";
+  if (!files.length) return;
+  const info = $("#dm-sheets-info");
+  info.textContent = "Lettura in corso…";
+  const ok = [];
+  const noFields = [];
+  const failed = [];
+  for (const file of files) {
+    const base = file.name.replace(/\.(pdf|json)$/i, "");
+    try {
+      if (/\.json$/i.test(file.name) || file.type === "application/json") {
+        const data = JSON.parse(await file.text());
+        if (data.kind !== "dnd-scheda") throw new Error("non è una scheda");
+        const c = upsertPc(data.sheet || {}, base);
+        if (data.pdf?.data) {
+          const blob = await (await fetch(data.pdf.data)).blob();
+          await pcPdfDB.save(c.id, new File([blob], data.pdf.name || `${c.name}.pdf`, { type: "application/pdf" }));
+          c.hasPdf = true;
+        }
+        ok.push(c.name);
+      } else {
+        let result = null;
+        try {
+          result = await readSheetFromPdf(file);
+        } catch (err) {
+          console.warn(err);
+        }
+        const c = upsertPc(result ? result.values : { nome: base }, base);
+        if (!result) {
+          c.sheet = null;
+          noFields.push(c.name);
+        } else ok.push(c.name);
+        await pcPdfDB.save(c.id, file);
+        c.hasPdf = true;
+      }
+    } catch (err) {
+      console.warn(err);
+      failed.push(file.name);
+    }
+  }
+  update();
+  const parts = [];
+  if (ok.length) parts.push(`Caricate: ${ok.join(", ")}`);
+  if (noFields.length) parts.push(`Solo PDF (senza campi leggibili): ${noFields.join(", ")}`);
+  if (failed.length) parts.push(`Non lette: ${failed.join(", ")}`);
+  info.textContent = parts.join(" · ");
+});
+
+/* ---- Finestra scheda giocatore ---- */
+let pcOpenId = null;
+let pcPdfUrl = null;
+
+function openPcSheet(id) {
+  pcOpenId = id;
+  setPcTab("stats");
+  renderPcSheet();
+  const dlg = $("#pc-dialog");
+  if (!dlg.open) dlg.show(); // non modale: i dadi a destra restano visibili e usabili
+}
+
+function closePcSheet() {
+  pcOpenId = null;
+  $("#pc-dialog").close();
+  if (pcPdfUrl) URL.revokeObjectURL(pcPdfUrl);
+  pcPdfUrl = null;
+  $("#pc-pdf-frame").removeAttribute("src");
+}
+
+async function setPcTab(tab) {
+  $$(".ptab").forEach((t) => t.classList.toggle("active", t.dataset.ptab === tab));
+  $("#pc-stats").hidden = tab !== "stats";
+  $("#pc-pdf").hidden = tab !== "pdf";
+  if (tab !== "pdf") return;
+  const c = dm.combatants.find((x) => x.id === pcOpenId);
+  const file = c?.hasPdf ? await pcPdfDB.load(c.id).catch(() => null) : null;
+  if (pcPdfUrl) URL.revokeObjectURL(pcPdfUrl);
+  pcPdfUrl = file ? URL.createObjectURL(file) : null;
+  $("#pc-pdf-frame").hidden = !file;
+  $("#pc-nopdf").hidden = !!file;
+  if (file) $("#pc-pdf-frame").src = pcPdfUrl + "#view=FitH";
+}
+
+function renderPcSheet() {
+  const c = dm.combatants.find((x) => x.id === pcOpenId);
+  if (!c) return closePcSheet();
+  const s = c.sheet || {};
+  const k = calcFor(() => c.sheet);
+  $("#pc-avatar").innerHTML = c.img
+    ? `<img src="${c.img}" alt="" />`
+    : `<span>${esc((c.name || "?").charAt(0).toUpperCase())}</span>`;
+  $("#pc-avatar").style.setProperty("--tc", tokenColor(c));
+  $("#pc-name").textContent = c.name;
+  $("#pc-sub").textContent = [s.classe, s.razza, s.background, s.giocatore && `giocatore: ${s.giocatore}`]
+    .filter(Boolean)
+    .join(" · ");
+
+  if (!c.sheet) {
+    $("#pc-stats").innerHTML = `<p class="muted">Da questo PDF non è stato possibile leggere i campi: apri la tab <strong>PDF</strong> per consultarlo.</p>`;
+    return;
+  }
+
+  const pPerc = s.passive_percepire ?? k.passive("percepire");
+  const pInd = s.passive_indagare ?? k.passive("indagare");
+  const stat = (label, value, roll) =>
+    roll
+      ? `<button type="button" class="pc-stat" data-proll="${roll}"><b>${value}</b><span>${label}</span></button>`
+      : `<div class="pc-stat"><b>${value}</b><span>${label}</span></div>`;
+
+  const abilities = window.ABILITIES.map((ab) => {
+    const line = (key, name, bonus, prof, exp, extra = "") => `
+      <button type="button" class="pc-line" data-proll="${key}">
+        <span class="pc-mark ${exp ? "exp" : prof ? "prof" : ""}" title="${exp ? "Maestria" : prof ? "Competenza" : ""}"></span>
+        <span class="pc-bonus">${fmtBonus(bonus)}</span>
+        <span>${name}${extra}</span>
+      </button>`;
+    return `
+      <div class="pc-ab">
+        <div class="pc-ab-head">
+          <button type="button" class="pc-ab-mod" data-proll="ability:${ab.id}" title="Prova di ${ab.name}">${fmtBonus(k.mod(ab.id))}</button>
+          <div><strong>${ab.name}</strong><span class="muted small">${s[`score_${ab.id}`] ?? "–"}</span></div>
+        </div>
+        ${line(`save:${ab.id}`, "<strong>Tiro Salvezza</strong>", k.save(ab.id), s[`save_${ab.id}`], false)}
+        ${ab.skills
+          .map((sk) =>
+            line(`skill:${sk.id}`, sk.name, k.skill(sk.id), s[`prof_${sk.id}`], s[`exp_${sk.id}`], sk.armorPenalty ? " 🛡" : "")
+          )
+          .join("")}
+      </div>`;
+  }).join("");
+
+  $("#pc-stats").innerHTML = `
+    <div class="pc-stats-row">
+      ${stat("Classe Armatura", c.ca ?? s.ca ?? "–")}
+      ${stat("Punti ferita", `${c.hp ?? "–"}/${c.hpMax ?? "–"}`)}
+      ${stat("Iniziativa", fmtBonus(k.init()), "init")}
+      ${stat("Bonus comp.", fmtBonus(k.pb()))}
+      ${stat("Percezione pass.", pPerc)}
+      ${stat("Indagare pass.", pInd)}
+    </div>
+    ${s.armatura ? `<p class="muted small pc-armor">Armatura: ${esc(s.armatura)}</p>` : ""}
+    <div class="pc-abilities">${abilities}</div>
+    <p class="muted small">Clic su un valore per tirare d20 + bonus (usa Normale / Vantaggio / Svantaggio del pannello dadi). I PF sono quelli attuali del combattimento.</p>`;
+}
+
+$("#pc-stats").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-proll]");
+  if (!btn) return;
+  const c = dm.combatants.find((x) => x.id === pcOpenId);
+  if (!c?.sheet) return;
+  const { label, parts } = resolveRollFor(c.sheet, calcFor(() => c.sheet), btn.dataset.proll);
+  rollCheck(`${c.name} · ${label}`, parts);
+});
+$$(".ptab").forEach((t) => t.addEventListener("click", () => setPcTab(t.dataset.ptab)));
+$("#pc-close").addEventListener("click", closePcSheet);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && pcOpenId) closePcSheet();
 });
 
 /* ---- Avvio ---- */
